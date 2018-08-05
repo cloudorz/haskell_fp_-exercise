@@ -40,6 +40,10 @@ data Two a b = Two a b deriving (Eq, Show)
 instance (Semigroup a, Semigroup b) => Semigroup (Two a b) where
   (Two a b) <> (Two a' b') = Two (a <> a') (b <> b')
 
+instance (Semigroup a, Semigroup b, Monoid a, Monoid b) => Monoid (Two a b) where
+  mempty = Two mempty mempty
+  mappend = (<>)
+
 instance (Arbitrary a, Arbitrary b) => Arbitrary (Two a b) where
   arbitrary = Two <$> arbitrary <*> arbitrary
 
@@ -50,6 +54,10 @@ newtype BoolConj = BoolConj Bool deriving (Eq, Show)
 
 instance Semigroup BoolConj where
   (BoolConj a) <> (BoolConj b) = BoolConj $ a && b
+
+instance Monoid BoolConj where
+  mempty = BoolConj True
+  mappend = (<>)
 
 instance Arbitrary BoolConj where
   arbitrary = BoolConj <$> (choose (True, False))
@@ -76,8 +84,34 @@ newtype Combine a b =
 instance Semigroup b => Semigroup (Combine a b) where
   a <> b = Combine $ \x -> unCombine a x <> unCombine b x
 
-type CombineAssoc = Combine Int String -> Combine Int String -> Combine Int String -> Bool
+-- 10
+newtype Comp a = 
+  Comp { unComp :: (a -> a) }
 
+instance Semigroup a => Semigroup (Comp a) where
+  (Comp a) <> (Comp b) = Comp $ \v -> a v <> b v
+
+-- 11
+
+data Validation a b = Fail a | Suc b deriving (Eq, Show)
+instance Semigroup a => Semigroup (Validation a b) where
+  (Fail a) <> (Fail b) = Fail $ a <> b
+  _ <> (Fail b) = Fail b
+  (Fail b) <> _ = Fail b
+
+newtype AccumulateRight a b = AccumulateRight (Validation a b) deriving (Eq, Show)
+instance Semigroup b => Semigroup (AccumulateRight a b) where
+  (AccumulateRight (Suc b)) <> (AccumulateRight (Suc b')) = AccumulateRight (Suc $ b <> b')
+  (AccumulateRight (Fail a)) <> _ = AccumulateRight (Fail a)
+  _ <> (AccumulateRight (Fail a)) = AccumulateRight (Fail a)
+
+newtype AccumulateBoth a b = AccumulateBoth (Validation a b) deriving (Eq, Show)
+instance (Semigroup a, Semigroup b) => Semigroup (AccumulateBoth a b) where
+  (AccumulateBoth (Suc b)) <> (AccumulateBoth (Suc b')) = AccumulateBoth (Suc $ b <> b')
+  (AccumulateBoth (Fail a)) <> (AccumulateBoth (Fail a')) = AccumulateBoth (Fail $ a <> a')
+  (AccumulateBoth (Fail a)) <> _ = AccumulateBoth (Fail a)
+  _ <> (AccumulateBoth (Fail a)) = AccumulateBoth (Fail a)
+-- 
 -- testing
 semigroupAssoc :: (Eq m, Semigroup m) => m -> m -> m -> Bool
 semigroupAssoc a b c = (a <> (b <> c)) == ((a <> b) <> c) 
@@ -99,5 +133,9 @@ main = do
   quickCheck (monoidLeftIdentity :: Identity String -> Bool)
   quickCheck (monoidRightIdentity :: Identity String -> Bool)
   quickCheck (semigroupAssoc :: TwoAssoc)
+  quickCheck (monoidLeftIdentity :: Two String String -> Bool)
+  quickCheck (monoidRightIdentity :: Two String String -> Bool)
   quickCheck (semigroupAssoc :: BoolConjAssoc)
+  quickCheck (monoidLeftIdentity :: BoolConj -> Bool)
+  quickCheck (monoidRightIdentity :: BoolConj -> Bool)
   quickCheck (semigroupAssoc :: OrAssoc)
