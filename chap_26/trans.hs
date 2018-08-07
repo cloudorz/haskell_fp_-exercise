@@ -10,3 +10,4 @@ newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
 
 instance MonadTrans (StateT s) where
   lift m = StateT $ \s -> (\x -> (x, s)) <$> m
+  
