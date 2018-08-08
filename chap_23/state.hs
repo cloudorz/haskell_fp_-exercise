@@ -18,9 +18,10 @@ instance Applicative (State s) where
     --                                 (ff, s) <- f
      --                                 let (a, s') = g s
       --                                return (ff a, s')
-  (State f) <*> (State g) = State $ \s -> let (ff, s') = f s
-                                              (a, s'') = g s'
-                                          in (ff a, s'')
+  --(State f) <*> (State g) = State $ \s -> let (ff, s') = f s
+   --                                           (a, s'') = g s'
+    --                                      in (ff a, s'')
+  (State f) <*> (State g) = State $ swap . uncurry fmap . fmap swap . fmap g . f
   
   --(State f) <*> (State g) = State $ swap <$> ((((<*>) . swap) <$> f) <*> (swap <$> g))
 instance Monad (State s) where
@@ -30,3 +31,25 @@ instance Monad (State s) where
    --                         runState (g a)
   
   (State f) >>= g = State $ uncurry (runState . g) . f
+
+-- 1
+get :: State s s
+get = State $ \s -> (s, s)
+
+-- 2
+put :: s -> State s ()
+--put s = State $ const ((), s)
+put = State <$> const . (,) ()
+
+-- 3
+exec :: State s a -> s -> s
+exec (State sa) s = snd $ sa s
+
+-- 4
+eval :: State s a -> s -> a 
+eval (State sa) = fst . sa
+
+-- 5
+modify :: (s -> s) -> State s () 
+--modify f = State $ \s -> ((), f s)
+modify = State <$> fmap ((,) ())
