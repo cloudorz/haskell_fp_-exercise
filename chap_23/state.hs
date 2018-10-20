@@ -4,7 +4,7 @@ newtype State s a =
   State { runState :: s -> (a, s) }
 
 instance Functor (State s) where
-  --fmap f (State g) = State $ flip (,) <*> (f . fst . g) -- f . fst . g :: s -> b, flip (,) :: s -> b -> (b, s), f :: ((->) s)
+  --fmap f (State g) = State $ flip (,) <*> (f . fst . g) -- f . fst . g :: s -> b, flip (,) :: s -> b -> (b, s), Functor: ((->) s)
   --fmap f (State g) = State $ do 
    --                            (a, s) <- g
     --                           return (f a, s)
@@ -21,7 +21,7 @@ instance Applicative (State s) where
   --(State f) <*> (State g) = State $ \s -> let (ff, s') = f s
    --                                           (a, s'') = g s'
     --                                      in (ff a, s'')
-  (State f) <*> (State g) = State $ swap . uncurry fmap . fmap swap . fmap g . f
+  (State f) <*> (State g) = State $ swap . uncurry fmap . fmap swap . fmap g . f -- $ swap . uncurry fmap . fmap (swap . g) .f
   
   --(State f) <*> (State g) = State $ swap <$> ((((<*>) . swap) <$> f) <*> (swap <$> g))
 instance Monad (State s) where
